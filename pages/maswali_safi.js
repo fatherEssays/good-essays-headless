@@ -1,9 +1,45 @@
-// lib/graphql-client.js
-import { ApolloClient, InMemoryCache } from '@apollo/client';
+// pages/maswali_safi.js
+import client from '../lib/graphql-client';
+import { gql } from '@apollo/client';
 
-const client = new ApolloClient({
-  uri: process.env.NEXT_PUBLIC_WORDPRESS_API, // Your GraphQL endpoint
-  cache: new InMemoryCache(),
-});
+export async function getStaticProps() {
+  // Query posts from WordPress GraphQL
+  const { data } = await client.query({
+    query: gql`
+      query GetPosts {
+        posts {
+          nodes {
+            id
+            title
+            content
+          }
+        }
+      }
+    `,
+  });
 
-export default client;
+  return {
+    props: {
+      posts: data.posts.nodes || [],
+    },
+    revalidate: 10, // optional: regenerate page every 10 seconds
+  };
+}
+
+export default function MaswaliSafi({ posts }) {
+  if (!posts || posts.length === 0) {
+    return <p>No posts found.</p>;
+  }
+
+  return (
+    <div>
+      <h1>Posts from WordPress</h1>
+      {posts.map((post) => (
+        <div key={post.id} style={{ marginBottom: '2rem' }}>
+          <h2>{post.title}</h2>
+          <div dangerouslySetInnerHTML={{ __html: post.content }} />
+        </div>
+      ))}
+    </div>
+  );
+}
