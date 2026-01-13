@@ -1,26 +1,33 @@
 import Link from 'next/link';
 
-// React component for the homepage
-export default function Home({ posts }) {
+// Blog index page
+export default function Blog({ posts, menuItems }) {
   return (
     <div style={{ padding: '20px' }}>
+      {/* WordPress menu on top */}
+      <nav style={{ marginBottom: '40px' }}>
+        {menuItems?.map((item) => (
+          <Link
+            key={item.id}
+            href={item.path}
+            style={{ marginRight: '20px', textDecoration: 'none', color: 'blue' }}
+          >
+            {item.label}
+          </Link>
+        ))}
+      </nav>
+
       <h1>Good Essays Blog</h1>
 
       {posts.length === 0 && <p>No posts found.</p>}
 
       <ul style={{ listStyle: 'none', padding: 0 }}>
         {posts.map((post) => (
-          <li key={post.id} style={{ marginBottom: '30px' }}>
-            <Link href={`/posts/${post.slug}`}>
+          <li key={post.id} style={{ marginBottom: '20px' }}>
+            {/* Link to the single blog page */}
+            <Link href={`/blog/${post.slug}`} style={{ textDecoration: 'none', color: 'black' }}>
               <h2>{post.title}</h2>
             </Link>
-            <div
-              dangerouslySetInnerHTML={{
-                __html: post.content
-                  ? post.content.slice(0, 200) + '...'
-                  : 'No content available',
-              }}
-            />
           </li>
         ))}
       </ul>
@@ -28,40 +35,61 @@ export default function Home({ posts }) {
   );
 }
 
-// Fetch posts at build time
+// Fetch posts and menu at build time
 export async function getStaticProps() {
-  const endpoint = 'http://blog.good-essays.com/graphql'; // use HTTP or HTTPS depending on your site
+  const endpoint = 'http://blog.good-essays.com/graphql';
 
-  const query = `
+  const postsQuery = `
     query {
       posts(first: 10) {
         nodes {
           id
           title
           slug
-          content
+        }
+      }
+    }
+  `;
+
+  const menuQuery = `
+    query {
+      menu(id: "PRIMARY", idType: NAME) {
+        menuItems {
+          nodes {
+            id
+            label
+            path
+          }
         }
       }
     }
   `;
 
   try {
-    const res = await fetch(endpoint, {
+    // Fetch posts
+    const postRes = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query }),
+      body: JSON.stringify({ query: postsQuery }),
     });
+    const postJson = await postRes.json();
+    const posts = postJson.data?.posts?.nodes || [];
 
-    const json = await res.json();
-
-    const posts = json.data?.posts?.nodes || [];
+    // Fetch menu
+    const menuRes = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: menuQuery }),
+    });
+    const menuJson = await menuRes.json();
+    const menuItems = menuJson.data?.menu?.menuItems?.nodes || [];
 
     return {
-      props: { posts },
-      revalidate: 60, // Rebuild every 60 seconds
+      props: { posts, menuItems },
+      revalidate: 60,
     };
   } catch (error) {
-    console.error('Error fetching posts:', error); // ✅ fixed syntax
-    return { props: { posts: [] } };
+    console.error('Error fetching posts or menu:', error);
+    return { props: { posts: [], menuItems: [] } };
   }
 }
