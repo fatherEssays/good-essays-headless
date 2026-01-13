@@ -3,33 +3,37 @@ import client from '../lib/graphql-client';
 import { gql } from '@apollo/client';
 
 export async function getStaticProps() {
-  // Query posts from WordPress GraphQL
-  const { data } = await client.query({
-    query: gql`
-      query GetPosts {
-        posts {
-          nodes {
-            id
-            title
-            content
+  try {
+    const { data } = await client.query({
+      query: gql`
+        query GetPosts {
+          posts {
+            nodes {
+              id
+              title
+              content
+            }
           }
         }
-      }
-    `,
-  });
+      `,
+    });
 
-  return {
-    props: {
-      posts: data.posts.nodes || [],
-    },
-    revalidate: 10, // optional: regenerate page every 10 seconds
-  };
+    return {
+      props: {
+        posts: data.posts?.nodes || [],
+      },
+      revalidate: 10,
+    };
+  } catch (error) {
+    console.error('GraphQL query error:', error);
+    return {
+      props: { posts: [] },
+    };
+  }
 }
 
 export default function MaswaliSafi({ posts }) {
-  if (!posts || posts.length === 0) {
-    return <p>No posts found.</p>;
-  }
+  if (!posts || posts.length === 0) return <p>No posts found.</p>;
 
   return (
     <div>
